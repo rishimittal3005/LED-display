@@ -1,0 +1,109 @@
+#include <SPI.h>
+#include <DMD.h>
+#include <TimerOne.h>
+#include <DS3231.h>
+#include "SystemFont5x7.h"
+#include "Arial_black_16.h"
+#define ROW_MODULE 2
+#define COLUMN_MODULE 1
+
+DMD p10(ROW_MODULE, COLUMN_MODULE);
+DS3231  rtc(SDA, SCL);
+bool data = false;
+char message[200];
+char char_read;
+byte pos_index = 0;
+int i;
+void Time(void)
+{
+  String x = rtc.getDOWStr();
+  String y = ""; 
+  String z = "";
+  // x=x.substring(0,3);
+  char a[10];
+  x.toCharArray(a, 10);
+  p10.selectFont(SystemFont5x7); // Font used
+  p10.drawString(5, 4, a, 10, GRAPHICS_NORMAL); // Display TEXT SFE
+  delay(2000);
+  p10.clearScreen( true );
+  y = rtc.getDateStr(); // Display TEXT SF
+  char b[12];
+  p10.selectFont(Arial_Black_16);
+  y.toCharArray(b, 12);
+  p10.drawMarquee(b, 12, (32 * ROW_MODULE) - 1, 0);
+  long start = millis();
+  long timer = start;
+  boolean ret = false;
+  while (!ret) {
+    if ((timer + 40) < millis()) {
+      ret = p10.stepMarquee(-1, 0);
+      timer = millis();
+    }
+  }
+  p10.clearScreen( true );
+  z = rtc.getTimeStr(); // Display TEXT SF
+  z = z.substring(0, 6);
+  char c[6];
+  z.toCharArray(c, 6);
+  p10.selectFont(Arial_Black_16); // Font used
+  p10.drawString(12, 0, c, 6, GRAPHICS_NORMAL); // Display TEXT SFE
+  delay(3000);
+  p10.clearScreen( true );
+}
+void p10scan()
+{
+  p10.scanDisplayBySPI();
+}
+
+void setup()
+{
+  Timer1.initialize(1000);
+  Timer1.attachInterrupt(p10scan);
+  p10.clearScreen( true );
+  Serial.begin(9600);
+  rtc.begin();
+ 
+
+}
+void loop() {
+ 
+    if(data == 0){
+      Time();
+    }
+  if (Serial.available())
+  {
+    for (i = 0; i < 199; i++)
+    {
+      message[i] = '\0';
+      Serial.print(message[i]);
+    }
+    pos_index = 0;
+  }
+
+  while (Serial.available() > 0)
+  {
+    data = 1;
+    p10.clearScreen( true );
+    if (pos_index < (199))
+    {
+      char_read = Serial.read();
+      message[pos_index] = char_read;
+      Serial.println(message[pos_index]);
+      pos_index++;
+    }
+  }
+
+  p10.selectFont(Arial_Black_16);
+  p10.drawMarquee(message , 200, (32 * ROW_MODULE) - 1, 0);
+  long start = millis();
+  long timer_start = start;
+  boolean flag = false;
+  while (!flag)
+  {
+    if ((timer_start + 30) < millis())
+    {
+      flag = p10.stepMarquee(-1, 0);
+      timer_start = millis();
+    }
+  }
+}
